@@ -6,131 +6,216 @@
 <title>Card Capture CRM</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --border: #e6e8ec;
+    --text: #1c2330;
+    --muted: #6b7280;
+    --faint: #9aa1ac;
+    --accent: #3d5afe;
+    --accent-dark: #2f46c7;
+    --wa: #1faa53;
+    --wa-dark: #178f44;
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.05);
+    --shadow-md: 0 4px 16px rgba(16,24,40,.07);
+    --radius: 12px;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: #fafafa;
-    color: #2b2b2b;
-    line-height: 1.5;
-    padding: 32px 16px 64px;
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:
+      radial-gradient(1200px 400px at 50% -100px, #eef1ff 0%, rgba(238,241,255,0) 70%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    padding: 0 16px 72px;
   }
-  .wrap { max-width: 760px; margin: 0 auto; }
-  header { text-align: center; margin-bottom: 28px; }
-  header h1 { font-size: 26px; font-weight: 600; letter-spacing: 0.5px; }
-  header p { color: #8a8a8a; font-size: 14px; margin-top: 4px; }
+  .wrap { max-width: 780px; margin: 0 auto; }
 
+  /* Header banner */
+  .topbar {
+    background: linear-gradient(135deg, #1b2550 0%, #2a3a8f 55%, #3d5afe 130%);
+    color: #fff;
+    padding: 30px 16px 66px;
+    text-align: center;
+    margin: 0 -16px;
+  }
+  .topbar .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .brand .logo {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: rgba(255,255,255,.16);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+  }
+  .topbar p { color: rgba(255,255,255,.75); font-size: 14px; margin-top: 4px; }
+  .wrap { margin-top: -40px; }
+
+  /* Sections */
   section {
-    background: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 10px;
-    padding: 24px;
-    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 26px;
+    margin-bottom: 22px;
+    box-shadow: var(--shadow-sm);
   }
-  section h2 {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 4px;
+  .sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .sec-num {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: #eef1ff; color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; flex-shrink: 0;
   }
-  section .desc { color: #8a8a8a; font-size: 13px; margin-bottom: 18px; }
+  section h2 { font-size: 16px; font-weight: 700; margin: 0; }
+  section .desc { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
 
   /* Scan area */
   .scan-area {
-    border: 2px dashed #d4d4d4;
-    border-radius: 10px;
-    padding: 20px;
+    border: 2px dashed #ccd2dd;
+    border-radius: var(--radius);
+    background: #fafbfd;
+    padding: 26px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    color: #9a9a9a;
+    color: var(--faint);
     font-size: 14px;
-    margin-bottom: 20px;
-    transition: border-color .15s;
+    margin-bottom: 22px;
+    transition: border-color .15s, background .15s;
     text-align: center;
   }
-  .scan-area:hover { border-color: #b0b0b0; }
-  .scan-area.dragover { border-color: #7a9a7a; background: #f4faf4; }
-  .scan-area .icon { font-size: 28px; }
-  .scan-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .scan-area:hover { border-color: #9aa6c3; }
+  .scan-area.dragover { border-color: var(--accent); background: #eef1ff; }
+  .scan-area .icon {
+    font-size: 26px;
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: #eef1ff;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 2px;
+  }
+  .scan-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
   .scan-buttons button {
     background: #fff;
-    border: 1px solid #d4d4d4;
-    border-radius: 6px;
-    padding: 6px 14px;
+    border: 1px solid #d5d9e2;
+    border-radius: 8px;
+    padding: 8px 16px;
     font-size: 13px;
-    color: #555;
+    font-weight: 500;
+    color: #3c4352;
     cursor: pointer;
     font-family: inherit;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .15s, color .15s, transform .05s;
   }
-  .scan-buttons button:hover { border-color: #999; }
-  .scan-msg { font-size: 12px; color: #7a9a7a; min-height: 16px; }
+  .scan-buttons button:hover { border-color: var(--accent); color: var(--accent); }
+  .scan-buttons button:active { transform: scale(.97); }
+  .scan-msg { font-size: 12.5px; color: #2e7d43; min-height: 16px; font-weight: 500; }
   .scan-msg.show { display: block; }
-  .scan-msg.err { color: #b06a6a; }
-  .scan-progress { font-size: 12px; color: #8a8a8a; }
+  .scan-msg.err { color: #b04848; }
+  .scan-progress { font-size: 12.5px; color: var(--muted); }
   .preview-img {
     max-width: 100%;
     max-height: 180px;
-    border: 1px solid #e5e5e5;
-    border-radius: 6px;
-    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 10px;
+    box-shadow: var(--shadow-md);
   }
 
+  /* Form */
   form .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 14px;
     margin-bottom: 16px;
   }
   @media (max-width: 560px) { form .grid { grid-template-columns: 1fr; } }
   .field label {
     display: block;
-    font-size: 12px;
-    color: #8a8a8a;
-    margin-bottom: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 5px;
   }
   .field input, .field select, .note-input {
     width: 100%;
-    border: 1px solid #dcdcdc;
-    border-radius: 6px;
-    padding: 9px 10px;
+    border: 1px solid #d9dde5;
+    border-radius: 8px;
+    padding: 10px 12px;
     font-size: 14px;
     font-family: inherit;
     background: #fff;
-    color: #2b2b2b;
+    color: var(--text);
+    transition: border-color .15s, box-shadow .15s;
   }
   .field input:focus, .field select:focus, .note-input:focus, .search-box input:focus {
     outline: none;
-    border-color: #aaa;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(61,90,254,.12);
   }
   .actions { display: flex; justify-content: flex-end; }
   .btn {
-    background: #2b2b2b;
+    background: var(--accent);
     color: #fff;
     border: none;
-    border-radius: 6px;
-    padding: 10px 22px;
+    border-radius: 8px;
+    padding: 10px 24px;
     font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
     font-family: inherit;
+    box-shadow: var(--shadow-sm);
+    transition: background .15s, transform .05s;
   }
-  .btn:hover { background: #444; }
+  .btn:hover { background: var(--accent-dark); }
+  .btn:active { transform: scale(.97); }
   .btn-draft { background: #35618f; }
-  .btn-draft:hover { background: #4273a5; }
-  .btn-wa { background: #1faa53; }
-  .btn-wa:hover { background: #189c4a; }
+  .btn-draft:hover { background: #2c527b; }
+  .btn-wa { background: var(--wa); }
+  .btn-wa:hover { background: var(--wa-dark); }
 
   /* Search */
-  .search-box { margin-bottom: 18px; }
-  .search-box input { width: 100%; }
+  .search-box { margin-bottom: 18px; position: relative; }
+  .search-box input { width: 100%; padding-left: 38px; background: #fafbfd; }
+  .search-box::before {
+    content: "\2315";
+    position: absolute;
+    left: 13px; top: 50%;
+    transform: translateY(-54%);
+    font-size: 18px;
+    color: var(--faint);
+    pointer-events: none;
+  }
 
   /* Card list */
   .card-row {
-    border: 1px solid #e8e8e8;
-    border-radius: 8px;
-    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
     margin-bottom: 12px;
+    background: #fff;
+    display: flex;
+    gap: 14px;
+    transition: box-shadow .15s, border-color .15s, transform .1s;
   }
+  .card-row:hover { box-shadow: var(--shadow-md); border-color: #d4d9e3; transform: translateY(-1px); }
+  .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #fff;
+    letter-spacing: .5px;
+  }
+  .card-main { flex: 1; min-width: 0; }
   .card-top {
     display: flex;
     justify-content: space-between;
@@ -138,49 +223,60 @@
     gap: 12px;
     flex-wrap: wrap;
   }
-  .card-name { font-weight: 600; font-size: 15px; }
-  .card-company { color: #6a6a6a; font-size: 13px; }
-  .card-details { margin-top: 8px; font-size: 13px; color: #555; display: flex; flex-direction: column; gap: 2px; }
-  .card-note { margin-top: 8px; font-size: 13px; color: #777; font-style: italic; }
+  .card-name { font-weight: 650; font-size: 15px; }
+  .card-company { color: var(--muted); font-size: 13px; }
+  .card-details { margin-top: 6px; font-size: 13px; color: #525a68; display: flex; flex-direction: column; gap: 2px; }
+  .card-note {
+    margin-top: 10px; font-size: 12.5px; color: #5b6472;
+    background: #f7f8fa;
+    border-left: 3px solid #d5d9e2;
+    border-radius: 0 6px 6px 0;
+    padding: 7px 10px;
+    font-style: italic;
+  }
   .status-pill {
-    border: 1px solid #dcdcdc;
+    border: 1px solid transparent;
     border-radius: 999px;
-    background: #fff;
     padding: 4px 14px;
     font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;
+    transition: filter .15s, transform .05s;
   }
-  .status-new      { background: #eef4fb; border-color: #bcd4ee; color: #35618f; }
-  .status-contacted{ background: #eff8ef; border-color: #bcdcba; color: #3c7a3c; }
-  .status-later    { background: #fdf5ea; border-color: #ecd3ab; color: #9a6d1c; }
+  .status-pill:hover { filter: brightness(.96); }
+  .status-pill:active { transform: scale(.95); }
+  .status-new      { background: #e8f0fe; color: #2b54c7; }
+  .status-contacted{ background: #e6f5ea; color: #217a3c; }
+  .status-later    { background: #fdf3e3; color: #9a6b14; }
 
-  .empty-list { color: #9a9a9a; font-size: 14px; text-align: center; padding: 24px 0; }
+  .empty-list { color: var(--faint); font-size: 14px; text-align: center; padding: 28px 0; }
 
   /* Notes */
   .note-row {
     display: flex;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
     align-items: center;
   }
   .note-row select { width: auto; max-width: 100%; }
   .note-row .note-input { flex: 1; min-width: 200px; }
-  .note-hint { font-size: 12px; color: #9a9a9a; margin-top: 4px; }
+  .note-hint { font-size: 12px; color: var(--faint); margin-top: 4px; }
 </style>
+
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>Card Capture CRM</h1>
+  <div class="topbar">
+    <div class="brand"><span class="logo">📌</span> Card Capture CRM</div>
     <p>Scan, review, and track business card leads from exhibitions</p>
-  </header>
+  </div>
 
   <!-- 1. Scan Card -->
   <section id="scan-section">
-    <h2>1. Scan Card</h2>
+    <div class="sec-head"><span class="sec-num">1</span><h2>Scan Card</h2></div>
     <p class="desc">Upload or take a photo of a business card — the text is read automatically (OCR) — or type the details below.</p>
     <div class="scan-area" id="scan-area">
       <span class="icon">📷</span>
@@ -238,7 +334,7 @@
 
   <!-- 2. Card List -->
   <section id="list-section">
-    <h2>2. Card List</h2>
+    <div class="sec-head"><span class="sec-num">2</span><h2>Card List</h2></div>
     <p class="desc">All captured contacts. Click a status pill to change it.</p>
     <div class="search-box field">
       <input id="search" placeholder="Search by name or company…">
@@ -248,7 +344,7 @@
 
   <!-- 3. Follow-Up Notes -->
   <section id="notes-section">
-    <h2>3. Follow-Up Notes</h2>
+    <div class="sec-head"><span class="sec-num">3</span><h2>Follow-Up Notes</h2></div>
     <p class="desc">Pick a contact, write the next step, and update their status.</p>
     <div class="note-row">
       <select id="note-target" class="field"></select>
@@ -313,7 +409,13 @@
     } else {
       list.innerHTML = visible.map(function(c) {
         var i = cards.indexOf(c);
+        var initials = c.name.split(/\s+/).filter(Boolean).slice(0, 2).map(function(w) { return w[0].toUpperCase(); }).join("") || "?";
+        var hue = 0;
+        for (var h = 0; h < c.name.length; h++) hue = (hue + c.name.charCodeAt(h) * 31) % 360;
+        var avatar = "background:hsl(" + hue + ",55%,48%)";
         return '<div class="card-row">' +
+          '<div class="avatar" style="' + avatar + '">' + esc(initials) + "</div>" +
+          '<div class="card-main">' +
           '<div class="card-top">' +
             '<div><span class="card-name">' + esc(c.name) + '</span> <span class="card-company">— ' + esc(c.company) + "</span></div>" +
             '<button class="status-pill status-' + c.status + '" data-index="' + i + '">' + STATUS_LABELS[c.status] + "</button>" +
@@ -324,6 +426,7 @@
             (c.email ? "<div>✉️ " + esc(c.email) + "</div>" : "") +
           "</div>" +
           (c.note ? '<div class="card-note">Note: ' + esc(c.note) + "</div>" : "") +
+          "</div>" +
         "</div>";
       }).join("");
     }
@@ -556,7 +659,7 @@
     btn.textContent = "Drafting…";
     setTimeout(function() {
       document.getElementById("note-text").value = draftFollowUp(cards[i]);
-      document.getElementById("ai-hint").textContent = "Draft ready — edit it if needed, then click Update to save it on the card.";
+      document.getElementById("ai-hint").textContent = "Draft ready — edit it if needed, then click WhatsApp to send it.";
       btn.disabled = false;
       btn.textContent = "✨ AI Draft";
     }, 600);
