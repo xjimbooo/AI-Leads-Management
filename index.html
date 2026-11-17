@@ -117,6 +117,8 @@
   .btn:hover { background: #444; }
   .btn-draft { background: #35618f; }
   .btn-draft:hover { background: #4273a5; }
+  .btn-wa { background: #1faa53; }
+  .btn-wa:hover { background: #189c4a; }
 
   /* Search */
   .search-box { margin-bottom: 18px; }
@@ -250,12 +252,12 @@
     <p class="desc">Pick a contact, write the next step, and update their status.</p>
     <div class="note-row">
       <select id="note-target" class="field"></select>
-      <input id="note-text" class="note-input" placeholder="Write the next step, e.g. Send catalogue by Friday">
+      <input id="note-text" class="note-input" placeholder="Write or AI-draft the WhatsApp message">
       <button type="button" class="btn btn-draft" id="ai-draft">✨ AI Draft</button>
-      <button type="button" class="btn" id="note-save">Update</button>
+      <button type="button" class="btn btn-wa" id="wa-send">WhatsApp</button>
     </div>
     <p class="note-hint" id="ai-hint"></p>
-    <p class="note-hint">Notes appear on each card in the Card List above.</p>
+    <p class="note-hint">WhatsApp opens in a new tab with your message pre-filled for the selected contact.</p>
   </section>
 </div>
 
@@ -560,14 +562,36 @@
     }, 600);
   });
 
-  document.getElementById("note-save").addEventListener("click", function() {
+  /* ---------- WhatsApp send ---------- */
+  // Normalize a card phone number to wa.me international digits (assumes Malaysia for local numbers)
+  function waNumber(phone) {
+    var d = (phone || "").replace(/[^\d+]/g, "");
+    if (d.indexOf("+") === 0) d = d.slice(1);
+    if (d.indexOf("60") === 0) return d;                    // already has MY country code
+    if (d.indexOf("0") === 0) return "6" + d;               // 012-345 6789 -> 60123456789
+    return d;
+  }
+
+  document.getElementById("wa-send").addEventListener("click", function() {
     var sel = document.getElementById("note-target");
     var i = parseInt(sel.value, 10);
+    if (isNaN(i) || !cards[i]) return;
+    var card = cards[i];
     var text = document.getElementById("note-text").value.trim();
-    if (isNaN(i) || !cards[i] || !text) return;
-    cards[i].note = text;
-    document.getElementById("note-text").value = "";
-    renderList();
+    if (!text) {
+      // No message typed yet — draft one first
+      text = draftFollowUp(card);
+      document.getElementById("note-text").value = text;
+      document.getElementById("ai-hint").textContent = "Drafted a message for you — it's also saved as the card's note.";
+      card.note = text;
+      renderList();
+    }
+    var num = waNumber(card.phone);
+    if (!num) {
+      document.getElementById("ai-hint").textContent = "This card has no phone number — add one on the card first.";
+      return;
+    }
+    window.open("https://wa.me/" + num + "?text=" + encodeURIComponent(text), "_blank");
   });
 
   renderList();
