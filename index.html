@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Card Capture CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -36,21 +37,23 @@
   .scan-area {
     border: 2px dashed #d4d4d4;
     border-radius: 10px;
-    height: 140px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     color: #9a9a9a;
     font-size: 14px;
     margin-bottom: 20px;
     transition: border-color .15s;
+    text-align: center;
   }
   .scan-area:hover { border-color: #b0b0b0; }
+  .scan-area.dragover { border-color: #7a9a7a; background: #f4faf4; }
   .scan-area .icon { font-size: 28px; }
-  .scan-area button {
-    margin-top: 6px;
+  .scan-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .scan-buttons button {
     background: #fff;
     border: 1px solid #d4d4d4;
     border-radius: 6px;
@@ -58,10 +61,20 @@
     font-size: 13px;
     color: #555;
     cursor: pointer;
+    font-family: inherit;
   }
-  .scan-area button:hover { border-color: #999; }
-  .scan-msg { font-size: 12px; color: #7a9a7a; display: none; }
+  .scan-buttons button:hover { border-color: #999; }
+  .scan-msg { font-size: 12px; color: #7a9a7a; min-height: 16px; }
   .scan-msg.show { display: block; }
+  .scan-msg.err { color: #b06a6a; }
+  .scan-progress { font-size: 12px; color: #8a8a8a; }
+  .preview-img {
+    max-width: 100%;
+    max-height: 180px;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    margin-top: 8px;
+  }
 
   form .grid {
     display: grid;
@@ -99,6 +112,7 @@
     padding: 10px 22px;
     font-size: 14px;
     cursor: pointer;
+    font-family: inherit;
   }
   .btn:hover { background: #444; }
 
@@ -148,7 +162,7 @@
     flex-wrap: wrap;
     align-items: center;
   }
-  .note-row select { width: auto; }
+  .note-row select { width: auto; max-width: 100%; }
   .note-row .note-input { flex: 1; min-width: 200px; }
   .note-hint { font-size: 12px; color: #9a9a9a; margin-top: 4px; }
 </style>
@@ -163,12 +177,19 @@
   <!-- 1. Scan Card -->
   <section id="scan-section">
     <h2>1. Scan Card</h2>
-    <p class="desc">Scan a business card or type the details to add a new lead.</p>
-    <div class="scan-area">
+    <p class="desc">Upload or take a photo of a business card — the text is read automatically (OCR) — or type the details below.</p>
+    <div class="scan-area" id="scan-area">
       <span class="icon">📷</span>
-      <span>Place the business card in the scan area</span>
-      <button type="button" id="scan-simulate">Simulate scan</button>
-      <span class="scan-msg" id="scan-msg">Card captured — review the details below and save.</span>
+      <span>Drop a card photo here, or choose an option</span>
+      <div class="scan-buttons">
+        <button type="button" id="btn-upload">Upload image</button>
+        <button type="button" id="btn-camera">Take photo</button>
+        <button type="button" id="scan-simulate">Try sample card</button>
+      </div>
+      <input type="file" id="file-input" accept="image/*" capture="environment" hidden>
+      <div class="scan-progress" id="scan-progress"></div>
+      <div class="scan-msg" id="scan-msg"></div>
+      <img class="preview-img" id="preview-img" alt="Scanned card preview" hidden>
     </div>
     <form id="add-form">
       <div class="grid">
@@ -312,7 +333,148 @@
     if (prev !== "" && prev < cards.length) sel.value = prev;
   }
 
-  // Feature 1: add card
+  /* ---------- OCR scanning ---------- */
+  var scanArea = document.getElementById("scan-area");
+  var fileInput = document.getElementById("file-input");
+  var previewImg = document.getElementById("preview-img");
+  var scanMsg = document.getElementById("scan-msg");
+  var scanProgress = document.getElementById("scan-progress");
+
+  function setMsg(text, isErr) {
+    scanMsg.textContent = text || "";
+    scanMsg.classList.toggle("show", !!text);
+    scanMsg.classList.toggle("err", !!isErr);
+  }
+
+  document.getElementById("btn-upload").addEventListener("click", function() {
+    fileInput.removeAttribute("capture");
+    fileInput.click();
+  });
+  document.getElementById("btn-camera").addEventListener("click", function() {
+    fileInput.setAttribute("capture", "environment");
+    fileInput.click();
+  });
+  scanArea.addEventListener("dragover", function(e) { e.preventDefault(); scanArea.classList.add("dragover"); });
+  scanArea.addEventListener("dragleave", function() { scanArea.classList.remove("dragover"); });
+  scanArea.addEventListener("drop", function(e) {
+    e.preventDefault();
+    scanArea.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener("change", function() {
+    if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+    fileInput.value = "";
+  });
+
+  function handleFile(file) {
+    if (!/^image\//.test(file.type)) { setMsg("Please choose an image file.", true); return; }
+    var url = URL.createObjectURL(file);
+    runOCR(url);
+  }
+
+  // Extract contact fields from raw OCR text
+  var TITLE_RE = /(director|manager|executive|officer|founder|co-?founder|engineer|consultant|supervisor|coordinator|admin|sales|marketing|finance|account|head|lead|owner|principal|partner|architect|designer|developer|analyst|specialist|assistant|president|ceo|cfo|coo|cto)/i;
+  var COMPANY_RE = /(sdn\s?bhd|sendirian|sdn\.|bhd\.?|enterprise|enterprises|resources|group|trading|logistics|solutions|technolog|consultancy|studio|ventures|holdings|supply|supplies|services|construction| properties|berhad)/i;
+
+  function parseCardText(text) {
+    var lines = text.split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+    var email = "", phone = "";
+    lines.forEach(function(l) {
+      if (!email) {
+        var m = l.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+        if (m) email = m[0];
+      }
+      if (!phone) {
+        var p = l.match(/(\+?\d[\d\s().-]{7,}\d)/);
+        if (p) phone = p[1].trim();
+      }
+    });
+    var name = "", title = "", company = "";
+    lines.forEach(function(l) {
+      if (l === email || l.indexOf("@") !== -1 || /\d/.test(l) || l.length < 3) return;
+      if (COMPANY_RE.test(l)) {
+        if (!company) company = l;
+        return;
+      }
+      if (TITLE_RE.test(l) && l.split(/\s+/).length <= 5) {
+        if (!title) title = l;
+        return;
+      }
+      if (!name && /^[A-Za-z .'’-]+$/.test(l) && l.split(/\s+/).length >= 2 && l.split(/\s+/).length <= 4) {
+        name = l;
+        return;
+      }
+      if (!company) company = l;
+    });
+    if (!company) {
+      var rest = lines.filter(function(l) { return l !== name && l !== title && !/\d/.test(l) && l.indexOf("@") === -1; });
+      company = rest.sort(function(a, b) { return b.length - a.length; })[0] || "";
+    }
+    return { name: name, company: company, title: title, phone: phone, email: email };
+  }
+
+  function runOCR(imageUrl) {
+    if (typeof Tesseract === "undefined") {
+      setMsg("OCR library failed to load — check your internet connection, or enter details manually.", true);
+      return;
+    }
+    setMsg("Reading card…", false);
+    scanProgress.textContent = "Starting OCR engine…";
+    previewImg.hidden = false;
+    previewImg.src = imageUrl;
+    Tesseract.recognize(imageUrl, "eng", {
+      logger: function(m) {
+        if (m.status === "recognizing text") {
+          scanProgress.textContent = "Reading card… " + Math.round(m.progress * 100) + "%";
+        } else if (m.status) {
+          scanProgress.textContent = m.status.charAt(0).toUpperCase() + m.status.slice(1) + "…";
+        }
+      }
+    }).then(function(result) {
+      window.lastOCRText = result.data.text || "";
+      scanProgress.textContent = "";
+      var fields = parseCardText(result.data.text || "");
+      if (fields.name) document.getElementById("f-name").value = fields.name;
+      if (fields.company) document.getElementById("f-company").value = fields.company;
+      if (fields.title) document.getElementById("f-title").value = fields.title;
+      if (fields.phone) document.getElementById("f-phone").value = fields.phone;
+      if (fields.email) document.getElementById("f-email").value = fields.email;
+      if (!fields.name && !fields.email && !fields.phone) {
+        setMsg("Couldn't read clear text from this image — please check or type the details below.", true);
+      } else {
+        setMsg("Card scanned — review the details below and save.", false);
+      }
+    }).catch(function() {
+      scanProgress.textContent = "";
+      setMsg("OCR failed on this image — try a clearer photo or type the details manually.", true);
+    });
+  }
+
+  // Sample card flow: generate a card image on canvas and OCR it
+  document.getElementById("scan-simulate").addEventListener("click", function() {
+    var c = document.createElement("canvas");
+    c.width = 640; c.height = 380;
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 640, 380);
+    ctx.strokeStyle = "#1a5276"; ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, 632, 372);
+    ctx.fillStyle = "#111111"; ctx.font = "bold 30px Arial";
+    ctx.fillText("HAFIZ BIN OSMAN", 40, 110);
+    ctx.fillStyle = "#444444"; ctx.font = "22px Arial";
+    ctx.fillText("Regional Sales Director", 40, 145);
+    ctx.fillStyle = "#1a5276"; ctx.font = "bold 24px Arial";
+    ctx.fillText("Terengganu Marine Supplies Sdn Bhd", 40, 190);
+    ctx.fillStyle = "#333333"; ctx.font = "20px Arial";
+    ctx.fillText("+60 17-908 3312", 40, 240);
+    ctx.fillText("hafiz.osman@tmsupplies.com.my", 40, 272);
+    ctx.fillText("Kuala Terengganu, Malaysia", 40, 304);
+    var url = c.toDataURL("image/png");
+    previewImg.hidden = false;
+    previewImg.src = url;
+    runOCR(url);
+  });
+
+  /* ---------- Existing features ---------- */
   document.getElementById("add-form").addEventListener("submit", function(e) {
     e.preventDefault();
     cards.unshift({
@@ -327,24 +489,15 @@
     this.reset();
     document.getElementById("f-status").value = "new";
     document.getElementById("search").value = "";
+    setMsg("");
+    scanProgress.textContent = "";
+    previewImg.hidden = true;
     renderList();
     document.getElementById("list-section").scrollIntoView({ behavior: "smooth" });
   });
 
-  // Simulated scan fills the form
-  document.getElementById("scan-simulate").addEventListener("click", function() {
-    document.getElementById("f-name").value = "Farid Azman";
-    document.getElementById("f-company").value = "Johor Craft Works";
-    document.getElementById("f-title").value = "Founder";
-    document.getElementById("f-phone").value = "+60 13-777 8890";
-    document.getElementById("f-email").value = "farid@johorcraft.my";
-    document.getElementById("scan-msg").classList.add("show");
-  });
-
-  // Feature 2: search
   document.getElementById("search").addEventListener("input", renderList);
 
-  // Feature 3: status cycle on click
   document.getElementById("card-list").addEventListener("click", function(e) {
     var btn = e.target.closest(".status-pill");
     if (!btn) return;
@@ -354,7 +507,6 @@
     renderList();
   });
 
-  // Notes
   document.getElementById("note-save").addEventListener("click", function() {
     var sel = document.getElementById("note-target");
     var i = parseInt(sel.value, 10);
