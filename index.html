@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Capture CRM</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #fafafa;
+    color: #2b2b2b;
+    line-height: 1.5;
+    padding: 32px 16px 64px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { font-size: 26px; font-weight: 600; letter-spacing: 0.5px; }
+  header p { color: #8a8a8a; font-size: 14px; margin-top: 4px; }
+
+  section {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  section .desc { color: #8a8a8a; font-size: 13px; margin-bottom: 18px; }
+
+  /* Scan area */
+  .scan-area {
+    border: 2px dashed #d4d4d4;
+    border-radius: 10px;
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #9a9a9a;
+    font-size: 14px;
+    margin-bottom: 20px;
+    transition: border-color .15s;
+  }
+  .scan-area:hover { border-color: #b0b0b0; }
+  .scan-area .icon { font-size: 28px; }
+  .scan-area button {
+    margin-top: 6px;
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+  }
+  .scan-area button:hover { border-color: #999; }
+  .scan-msg { font-size: 12px; color: #7a9a7a; display: none; }
+  .scan-msg.show { display: block; }
+
+  form .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 560px) { form .grid { grid-template-columns: 1fr; } }
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: #8a8a8a;
+    margin-bottom: 4px;
+  }
+  .field input, .field select, .note-input {
+    width: 100%;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    padding: 9px 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    color: #2b2b2b;
+  }
+  .field input:focus, .field select:focus, .note-input:focus, .search-box input:focus {
+    outline: none;
+    border-color: #aaa;
+  }
+  .actions { display: flex; justify-content: flex-end; }
+  .btn {
+    background: #2b2b2b;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 22px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .btn:hover { background: #444; }
+
+  /* Search */
+  .search-box { margin-bottom: 18px; }
+  .search-box input { width: 100%; }
+
+  /* Card list */
+  .card-row {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .card-name { font-weight: 600; font-size: 15px; }
+  .card-company { color: #6a6a6a; font-size: 13px; }
+  .card-details { margin-top: 8px; font-size: 13px; color: #555; display: flex; flex-direction: column; gap: 2px; }
+  .card-note { margin-top: 8px; font-size: 13px; color: #777; font-style: italic; }
+  .status-pill {
+    border: 1px solid #dcdcdc;
+    border-radius: 999px;
+    background: #fff;
+    padding: 4px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .status-new      { background: #eef4fb; border-color: #bcd4ee; color: #35618f; }
+  .status-contacted{ background: #eff8ef; border-color: #bcdcba; color: #3c7a3c; }
+  .status-later    { background: #fdf5ea; border-color: #ecd3ab; color: #9a6d1c; }
+
+  .empty-list { color: #9a9a9a; font-size: 14px; text-align: center; padding: 24px 0; }
+
+  /* Notes */
+  .note-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .note-row select { width: auto; }
+  .note-row .note-input { flex: 1; min-width: 200px; }
+  .note-hint { font-size: 12px; color: #9a9a9a; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Card Capture CRM</h1>
+    <p>Scan, review, and track business card leads from exhibitions</p>
+  </header>
+
+  <!-- 1. Scan Card -->
+  <section id="scan-section">
+    <h2>1. Scan Card</h2>
+    <p class="desc">Scan a business card or type the details to add a new lead.</p>
+    <div class="scan-area">
+      <span class="icon">📷</span>
+      <span>Place the business card in the scan area</span>
+      <button type="button" id="scan-simulate">Simulate scan</button>
+      <span class="scan-msg" id="scan-msg">Card captured — review the details below and save.</span>
+    </div>
+    <form id="add-form">
+      <div class="grid">
+        <div class="field">
+          <label for="f-name">Name *</label>
+          <input id="f-name" required placeholder="e.g. Aisyah Rahman">
+        </div>
+        <div class="field">
+          <label for="f-company">Company *</label>
+          <input id="f-company" required placeholder="e.g. Kota Trading Sdn Bhd">
+        </div>
+        <div class="field">
+          <label for="f-title">Job title</label>
+          <input id="f-title" placeholder="e.g. Sales Manager">
+        </div>
+        <div class="field">
+          <label for="f-phone">Phone</label>
+          <input id="f-phone" placeholder="e.g. +60 12-345 6789">
+        </div>
+        <div class="field">
+          <label for="f-email">Email</label>
+          <input id="f-email" placeholder="e.g. name@company.com">
+        </div>
+        <div class="field">
+          <label for="f-status">Status</label>
+          <select id="f-status">
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="later">Follow-up later</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:16px;">
+        <label for="f-note">Follow-up note (optional)</label>
+        <input id="f-note" class="note-input" placeholder="e.g. Interested in our wholesale catalogue">
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn">Add card</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 2. Card List -->
+  <section id="list-section">
+    <h2>2. Card List</h2>
+    <p class="desc">All captured contacts. Click a status pill to change it.</p>
+    <div class="search-box field">
+      <input id="search" placeholder="Search by name or company…">
+    </div>
+    <div id="card-list"></div>
+  </section>
+
+  <!-- 3. Follow-Up Notes -->
+  <section id="notes-section">
+    <h2>3. Follow-Up Notes</h2>
+    <p class="desc">Pick a contact, write the next step, and update their status.</p>
+    <div class="note-row">
+      <select id="note-target" class="field"></select>
+      <input id="note-text" class="note-input" placeholder="Write the next step, e.g. Send catalogue by Friday">
+      <button type="button" class="btn" id="note-save">Update</button>
+    </div>
+    <p class="note-hint">Notes appear on each card in the Card List above.</p>
+  </section>
+</div>
+
+<script>
+  var sampleCards = [
+    {
+      name: "Aisyah Rahman",
+      company: "Kota Trading Sdn Bhd",
+      title: "Sales Manager",
+      phone: "+60 12-345 6789",
+      email: "aisyah@kotatrading.com.my",
+      status: "new",
+      note: "Asked for our wholesale price list."
+    },
+    {
+      name: "Daniel Wong",
+      company: "Penang Logistics Hub",
+      title: "Operations Director",
+      phone: "+60 16-228 4455",
+      email: "daniel.wong@plhub.my",
+      status: "contacted",
+      note: "Called on 3 Nov — wants a demo next week."
+    },
+    {
+      name: "Nurul Huda Ismail",
+      company: "Seri Melaka Retail Group",
+      title: "Procurement Executive",
+      phone: "+60 19-555 0123",
+      email: "nurul.huda@serimelaka.my",
+      status: "later",
+      note: "Follow up after their year-end stock take."
+    }
+  ];
+  var cards = sampleCards.slice();
+
+  var STATUS_LABELS = { "new": "New", "contacted": "Contacted", "later": "Follow-up later" };
+  var STATUS_CYCLE = ["new", "contacted", "later"];
+
+  function esc(s) {
+    return String(s || "").replace(/[&<>"']/g, function(c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function renderList() {
+    var q = document.getElementById("search").value.trim().toLowerCase();
+    var list = document.getElementById("card-list");
+    var visible = cards.filter(function(c) {
+      return !q || c.name.toLowerCase().indexOf(q) !== -1 || c.company.toLowerCase().indexOf(q) !== -1;
+    });
+    if (visible.length === 0) {
+      list.innerHTML = '<div class="empty-list">' + (q ? "No cards match your search." : "No cards yet — add one above.") + "</div>";
+    } else {
+      list.innerHTML = visible.map(function(c) {
+        var i = cards.indexOf(c);
+        return '<div class="card-row">' +
+          '<div class="card-top">' +
+            '<div><span class="card-name">' + esc(c.name) + '</span> <span class="card-company">— ' + esc(c.company) + "</span></div>" +
+            '<button class="status-pill status-' + c.status + '" data-index="' + i + '">' + STATUS_LABELS[c.status] + "</button>" +
+          "</div>" +
+          '<div class="card-details">' +
+            (c.title ? "<div>" + esc(c.title) + "</div>" : "") +
+            (c.phone ? "<div>📞 " + esc(c.phone) + "</div>" : "") +
+            (c.email ? "<div>✉️ " + esc(c.email) + "</div>" : "") +
+          "</div>" +
+          (c.note ? '<div class="card-note">Note: ' + esc(c.note) + "</div>" : "") +
+        "</div>";
+      }).join("");
+    }
+    renderNoteTargets();
+  }
+
+  function renderNoteTargets() {
+    var sel = document.getElementById("note-target");
+    var prev = sel.value;
+    sel.innerHTML = cards.map(function(c, i) {
+      return '<option value="' + i + '">' + esc(c.name) + " — " + esc(c.company) + "</option>";
+    }).join("");
+    if (prev !== "" && prev < cards.length) sel.value = prev;
+  }
+
+  // Feature 1: add card
+  document.getElementById("add-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    cards.unshift({
+      name: document.getElementById("f-name").value.trim(),
+      company: document.getElementById("f-company").value.trim(),
+      title: document.getElementById("f-title").value.trim(),
+      phone: document.getElementById("f-phone").value.trim(),
+      email: document.getElementById("f-email").value.trim(),
+      status: document.getElementById("f-status").value,
+      note: document.getElementById("f-note").value.trim()
+    });
+    this.reset();
+    document.getElementById("f-status").value = "new";
+    document.getElementById("search").value = "";
+    renderList();
+    document.getElementById("list-section").scrollIntoView({ behavior: "smooth" });
+  });
+
+  // Simulated scan fills the form
+  document.getElementById("scan-simulate").addEventListener("click", function() {
+    document.getElementById("f-name").value = "Farid Azman";
+    document.getElementById("f-company").value = "Johor Craft Works";
+    document.getElementById("f-title").value = "Founder";
+    document.getElementById("f-phone").value = "+60 13-777 8890";
+    document.getElementById("f-email").value = "farid@johorcraft.my";
+    document.getElementById("scan-msg").classList.add("show");
+  });
+
+  // Feature 2: search
+  document.getElementById("search").addEventListener("input", renderList);
+
+  // Feature 3: status cycle on click
+  document.getElementById("card-list").addEventListener("click", function(e) {
+    var btn = e.target.closest(".status-pill");
+    if (!btn) return;
+    var i = parseInt(btn.getAttribute("data-index"), 10);
+    var cur = STATUS_CYCLE.indexOf(cards[i].status);
+    cards[i].status = STATUS_CYCLE[(cur + 1) % STATUS_CYCLE.length];
+    renderList();
+  });
+
+  // Notes
+  document.getElementById("note-save").addEventListener("click", function() {
+    var sel = document.getElementById("note-target");
+    var i = parseInt(sel.value, 10);
+    var text = document.getElementById("note-text").value.trim();
+    if (isNaN(i) || !cards[i] || !text) return;
+    cards[i].note = text;
+    document.getElementById("note-text").value = "";
+    renderList();
+  });
+
+  renderList();
+</script>
+</body>
+</html>
