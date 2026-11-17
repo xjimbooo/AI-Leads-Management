@@ -115,6 +115,8 @@
     font-family: inherit;
   }
   .btn:hover { background: #444; }
+  .btn-draft { background: #35618f; }
+  .btn-draft:hover { background: #4273a5; }
 
   /* Search */
   .search-box { margin-bottom: 18px; }
@@ -249,8 +251,10 @@
     <div class="note-row">
       <select id="note-target" class="field"></select>
       <input id="note-text" class="note-input" placeholder="Write the next step, e.g. Send catalogue by Friday">
+      <button type="button" class="btn btn-draft" id="ai-draft">✨ AI Draft</button>
       <button type="button" class="btn" id="note-save">Update</button>
     </div>
+    <p class="note-hint" id="ai-hint"></p>
     <p class="note-hint">Notes appear on each card in the Card List above.</p>
   </section>
 </div>
@@ -505,6 +509,55 @@
     var cur = STATUS_CYCLE.indexOf(cards[i].status);
     cards[i].status = STATUS_CYCLE[(cur + 1) % STATUS_CYCLE.length];
     renderList();
+  });
+
+  /* ---------- AI follow-up drafting (local, no backend) ---------- */
+  function draftFollowUp(c) {
+    var first = c.name.split(/\s+/)[0];
+    var pitch = "the materials we discussed at the exhibition";
+    if (/director|ceo|owner|founder|principal|partner|president/i.test(c.title || "")) {
+      pitch = "a partnership and bulk-pricing overview";
+    } else if (/procure|purchas|sourcing/i.test(c.title || "")) {
+      pitch = "our supplier catalogue and lead times";
+    } else if (/sales|marketing|business develop/i.test(c.title || "")) {
+      pitch = "the samples and price list we talked about";
+    } else if (/engineer|technical|operations/i.test(c.title || "")) {
+      pitch = "the technical specifications sheet";
+    }
+
+    var templates = {
+      "new": [
+        "Hi " + first + ", it was great meeting you at the exhibition! I'd love to share " + pitch + " with " + c.company + ". Would you be open to a quick call this week?",
+        "Hi " + first + ", thank you for stopping by our booth. I think " + pitch + " could be a good fit for " + c.company + " — when would be a convenient time for a short chat?"
+      ],
+      "contacted": [
+        "Hi " + first + ", following up on our conversation — I'm preparing " + pitch + " for " + c.company + ". I'll send it over by end of week. Let me know if there's anything specific you'd like included.",
+        "Hi " + first + ", just checking in after our call. The next step is to get " + pitch + " across to you — I'll have it ready shortly and can walk your team through it if helpful."
+      ],
+      "later": [
+        "Hi " + first + ", hope things are going well at " + c.company + ". When you're ready to revisit this, I'd be happy to pick up where we left off with " + pitch + ". No rush — just keeping in touch.",
+        "Hi " + first + ", circling back gently as promised. If the timing is better now, I can share " + pitch + " and we can take it from there."
+      ]
+    };
+    var opts = templates[c.status] || templates["new"];
+    var msg = opts[Math.floor(Math.random() * opts.length)];
+    if (c.note) msg += " (Re: " + c.note.replace(/\.$/, "") + ")";
+    return msg;
+  }
+
+  document.getElementById("ai-draft").addEventListener("click", function() {
+    var sel = document.getElementById("note-target");
+    var i = parseInt(sel.value, 10);
+    if (isNaN(i) || !cards[i]) return;
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = "Drafting…";
+    setTimeout(function() {
+      document.getElementById("note-text").value = draftFollowUp(cards[i]);
+      document.getElementById("ai-hint").textContent = "Draft ready — edit it if needed, then click Update to save it on the card.";
+      btn.disabled = false;
+      btn.textContent = "✨ AI Draft";
+    }, 600);
   });
 
   document.getElementById("note-save").addEventListener("click", function() {
